@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import api from '../utils/api';
+import api, { resolveUploadUrl } from '../utils/api';
 import { useLang } from '../context/LangContext';
 import { STATUS_ORDER, STATUS_ICONS, isStatusDone, isStatusActive, formatDate, formatDatetime } from '../utils/status';
 
@@ -16,7 +16,7 @@ function Lightbox({ images, startIndex, onClose }) {
     <div className="lightbox" onClick={onClose}>
       <button onClick={onClose} style={{ position: 'fixed', top: 20, right: 20, background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', width: 44, height: 44, borderRadius: '50%', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
       <div onClick={e => e.stopPropagation()} style={{ maxWidth: '90vw', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-        <img src={images[idx]?.image_path} alt={images[idx]?.caption} />
+        <img src={resolveUploadUrl(images[idx]?.image_path)} alt={images[idx]?.caption} />
         {images[idx]?.caption && <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem' }}>{images[idx].caption}</p>}
         {images.length > 1 && (
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -121,7 +121,7 @@ export default function TrackingPage() {
                     {copied ? `✓ ${t('linkCopied')}` : `🔗 ${t('copyLink')}`}
                   </button>
                   {shipment.qr_code_path && (
-                    <a href={shipment.qr_code_path} download className="btn btn-ghost btn-sm">📥 QR</a>
+                    <a href={resolveUploadUrl(shipment.qr_code_path)} download className="btn btn-ghost btn-sm">📥 QR</a>
                   )}
                 </div>
               </div>
@@ -191,7 +191,7 @@ export default function TrackingPage() {
                   <div className="gallery-grid">
                     {shipment.images.map((img, idx) => (
                       <div key={img.id} className="gallery-item" onClick={() => setLightbox(idx)}>
-                        <img src={img.image_path} alt={img.caption} loading="lazy" />
+                        <img src={resolveUploadUrl(img.image_path)} alt={img.caption} loading="lazy" />
                         {img.caption && <div className="caption">{img.caption}</div>}
                       </div>
                     ))}

@@ -1,7 +1,15 @@
 import axios from 'axios';
 
+const API_URL = import.meta.env.VITE_API_URL || '/api';
+const API_ORIGIN = API_URL.replace(/\/api\/?$/, '');
+
+export function resolveUploadUrl(path) {
+  if (!path) return path;
+  return /^https?:\/\//.test(path) ? path : `${API_ORIGIN}${path}`;
+}
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: API_URL,
   timeout: 15000,
 });
 

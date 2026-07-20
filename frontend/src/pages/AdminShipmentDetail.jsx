@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
-import api from '../utils/api';
+import api, { resolveUploadUrl } from '../utils/api';
 import { useLang } from '../context/LangContext';
 import { STATUS_ORDER, STATUS_ICONS, isStatusDone, formatDate, formatDatetime } from '../utils/status';
 import toast from 'react-hot-toast';
@@ -140,9 +140,9 @@ export default function AdminShipmentDetail() {
             ))}
             {shipment.qr_code_path && (
               <div style={{ marginTop: '16px', textAlign: 'center' }}>
-                <img src={shipment.qr_code_path} alt="QR Code" style={{ width: 120, height: 120, borderRadius: 8 }} />
+                <img src={resolveUploadUrl(shipment.qr_code_path)} alt="QR Code" style={{ width: 120, height: 120, borderRadius: 8 }} />
                 <div style={{ marginTop: '8px' }}>
-                  <a href={shipment.qr_code_path} download className="btn btn-secondary btn-sm">📥 {t('downloadQR')}</a>
+                  <a href={resolveUploadUrl(shipment.qr_code_path)} download className="btn btn-secondary btn-sm">📥 {t('downloadQR')}</a>
                 </div>
               </div>
             )}
@@ -243,7 +243,7 @@ export default function AdminShipmentDetail() {
               <div className="gallery-grid">
                 {shipment.images.map(img => (
                   <div key={img.id} className="gallery-item">
-                    <img src={img.image_path} alt={img.caption} />
+                    <img src={resolveUploadUrl(img.image_path)} alt={img.caption} />
                     <button onClick={() => handleDeleteImage(img.id)}
                       style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(239,68,68,0.85)', border: 'none', color: 'white', width: 26, height: 26, borderRadius: '50%', cursor: 'pointer', fontSize: '0.85rem' }}>🗑</button>
                     {img.caption && <div className="caption">{img.caption}</div>}
