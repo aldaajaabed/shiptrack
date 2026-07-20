@@ -31,6 +31,8 @@
 
 html { font-size: 16px; }
 
+html, body { overflow-x: hidden; max-width: 100%; }
+
 body {
   font-family: var(--font);
   background: var(--bg);
@@ -347,7 +349,7 @@ body.ltr .nav-link { text-align: left; }
 .nav-link.active { background: var(--primary); color: white; box-shadow: var(--shadow-blue); }
 .nav-label { font-size: 0.72rem; font-weight: 700; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.08em; padding: 8px 14px 4px; }
 
-.main-content { flex: 1; margin-right: 260px; padding: 0; }
+.main-content { flex: 1; min-width: 0; margin-right: 260px; padding: 0; }
 body.ltr .main-content { margin-right: 0; margin-left: 260px; }
 
 .topbar {
