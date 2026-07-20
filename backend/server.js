@@ -13,6 +13,10 @@ const statsRoutes = require('./routes/stats');
 
 const app = express();
 
+// Render (and most PaaS hosts) sit behind a reverse proxy that sets X-Forwarded-For.
+// Without this, express-rate-limit throws on every request behind that proxy.
+app.set('trust proxy', 1);
+
 // Security
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
