@@ -74,16 +74,25 @@ router.get('/:id', authMiddleware, async (req, res) => {
 router.post('/', authMiddleware, async (req, res) => {
   try {
     const { customer_name, phone, departure_date, estimated_arrival, notes } = req.body;
+    let { tracking_number } = req.body;
     if (!customer_name || !phone) return res.status(400).json({ error: 'Customer name and phone required' });
 
-    let tracking_number;
-    let attempts = 0;
-    do {
-      tracking_number = generateTrackingNumber();
+    if (tracking_number) {
+      tracking_number = tracking_number.trim().toUpperCase();
+      if (!/^[A-Z0-9-]{3,30}$/.test(tracking_number)) {
+        return res.status(400).json({ error: 'Tracking number must be 3-30 characters: letters, numbers, or dashes only' });
+      }
       const [existing] = await db.query('SELECT id FROM shipments WHERE tracking_number = ?', [tracking_number]);
-      if (!existing.length) break;
-      attempts++;
-    } while (attempts < 10);
+      if (existing.length) return res.status(409).json({ error: 'Tracking number already exists' });
+    } else {
+      let attempts = 0;
+      do {
+        tracking_number = generateTrackingNumber();
+        const [existing] = await db.query('SELECT id FROM shipments WHERE tracking_number = ?', [tracking_number]);
+        if (!existing.length) break;
+        attempts++;
+      } while (attempts < 10);
+    }
 
     const tracking_url = `${process.env.TRACKING_BASE_URL || 'http://localhost:5173/track'}/${tracking_number}`;
 

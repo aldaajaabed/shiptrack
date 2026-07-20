@@ -13,7 +13,7 @@ const STATUSES = [
 function ShipmentModal({ shipment, onClose, onSaved }) {
   const { t, lang } = useLang();
   const [form, setForm] = useState(shipment || {
-    customer_name: '', phone: '', departure_date: '', estimated_arrival: '', notes: ''
+    tracking_number: '', customer_name: '', phone: '', departure_date: '', estimated_arrival: '', notes: ''
   });
   const [saving, setSaving] = useState(false);
 
@@ -45,6 +45,14 @@ function ShipmentModal({ shipment, onClose, onSaved }) {
         </div>
         <form onSubmit={handleSubmit}>
           <div className="modal-body">
+            {!shipment && (
+              <div className="form-group">
+                <label className="form-label">{t('trackingNumber')}</label>
+                <input className="form-control" value={form.tracking_number || ''}
+                  placeholder={lang === 'ar' ? 'اتركه فارغًا لتوليده تلقائيًا' : 'Leave blank to auto-generate'}
+                  onChange={e => setForm(f => ({ ...f, tracking_number: e.target.value.toUpperCase() }))} />
+              </div>
+            )}
             <div className="form-group">
               <label className="form-label">{t('customerName')} *</label>
               <input className="form-control" value={form.customer_name}
