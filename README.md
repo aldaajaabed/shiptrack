@@ -69,10 +69,8 @@ npm run dev
 ```
 
 ### 5. Default Admin Login
-- **Email:** admin@shiptrack.jo
-- **Password:** Admin@1234
-- ⚠️ Change this immediately in production!
-
+- **Email:** *****
+- **Password:** ****
 ---
 
 ## 🐳 Docker Deployment
