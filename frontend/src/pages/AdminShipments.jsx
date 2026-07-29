@@ -13,7 +13,7 @@ const STATUSES = [
 function ShipmentModal({ shipment, onClose, onSaved }) {
   const { t, lang } = useLang();
   const [form, setForm] = useState(shipment || {
-    tracking_number: '', customer_name: '', phone: '', departure_date: '', estimated_arrival: '', notes: ''
+    tracking_number: '', parent_tracking_number: '', customer_name: '', phone: '', departure_date: '', estimated_arrival: '', notes: ''
   });
   const [saving, setSaving] = useState(false);
 
@@ -53,6 +53,13 @@ function ShipmentModal({ shipment, onClose, onSaved }) {
                   onChange={e => setForm(f => ({ ...f, tracking_number: e.target.value.toUpperCase() }))} />
               </div>
             )}
+            <div className="form-group">
+              <label className="form-label">{t('mainShipment')}</label>
+              <input className="form-control" value={form.parent_tracking_number || ''}
+                placeholder={lang === 'ar' ? 'رقم تتبع الشحنة الرئيسية (اختياري)' : 'Main shipment tracking number (optional)'}
+                onChange={e => setForm(f => ({ ...f, parent_tracking_number: e.target.value.toUpperCase() }))} />
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>{t('mainShipmentHint')}</div>
+            </div>
             <div className="form-group">
               <label className="form-label">{t('customerName')} *</label>
               <input className="form-control" value={form.customer_name}
@@ -202,6 +209,16 @@ export default function AdminShipments() {
                       style={{ fontFamily: 'var(--font-mono)', fontWeight: '700', color: 'var(--primary)', fontSize: '0.88rem' }}>
                       #{s.tracking_number}
                     </a>
+                    {s.children_count > 0 && (
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        {lang === 'ar' ? `رئيسية (${s.children_count})` : `Main (${s.children_count})`}
+                      </div>
+                    )}
+                    {s.parent_tracking_number && (
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        {t('partOfMainShipment')}: #{s.parent_tracking_number}
+                      </div>
+                    )}
                   </td>
                   <td style={{ fontWeight: '600' }}>{s.customer_name}</td>
                   <td style={{ direction: 'ltr', textAlign: 'right' }}>{s.phone}</td>

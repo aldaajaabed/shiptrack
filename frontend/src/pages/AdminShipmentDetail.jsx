@@ -115,6 +115,14 @@ export default function AdminShipmentDetail() {
             📦 {shipment.customer_name}
           </h1>
           <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--primary)', fontWeight: '700', fontSize: '0.9rem' }}>#{shipment.tracking_number}</span>
+          {shipment.parent && (
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+              {t('partOfMainShipment')}:{' '}
+              <a href={`/admin/shipments/${shipment.parent.id}`} style={{ color: 'var(--primary)', fontWeight: '600' }}>
+                #{shipment.parent.tracking_number}
+              </a>
+            </div>
+          )}
         </div>
         <a href={`/track/${shipment.tracking_number}`} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm" style={{ marginRight: 'auto' }}>
           🔗 {lang === 'ar' ? 'عرض صفحة التتبع' : 'View Tracking Page'}
@@ -153,6 +161,11 @@ export default function AdminShipmentDetail() {
         <div className="card">
           <div className="card-header"><h2 style={{ fontSize: '1rem' }}>📍 {t('updateStatus')}</h2></div>
           <div className="card-body">
+            {shipment.children?.length > 0 && (
+              <div style={{ background: 'var(--warning-bg, #fef3c7)', color: 'var(--warning-text, #92400e)', borderRadius: 8, padding: '10px 12px', fontSize: '0.82rem', marginBottom: '14px' }}>
+                ⚠️ {t('cascadeWarning')} ({shipment.children.length})
+              </div>
+            )}
             <form onSubmit={handleStatusUpdate}>
               <div className="form-group">
                 <label className="form-label">{t('selectStatus')}</label>
@@ -175,6 +188,26 @@ export default function AdminShipmentDetail() {
             </form>
           </div>
         </div>
+
+        {/* Linked shipments */}
+        {shipment.children?.length > 0 && (
+          <div className="card">
+            <div className="card-header"><h2 style={{ fontSize: '1rem' }}>🔗 {t('linkedShipments')} ({shipment.children.length})</h2></div>
+            <div className="card-body">
+              {shipment.children.map(c => (
+                <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                  <div>
+                    <a href={`/admin/shipments/${c.id}`} style={{ fontFamily: 'var(--font-mono)', fontWeight: '700', color: 'var(--primary)', fontSize: '0.88rem' }}>
+                      #{c.tracking_number}
+                    </a>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{c.customer_name}</div>
+                  </div>
+                  <span className={`badge status-${c.current_status}`}>{STATUS_LABELS[c.current_status]}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Timeline */}
         <div className="card">

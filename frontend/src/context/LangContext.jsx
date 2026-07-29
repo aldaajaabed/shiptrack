@@ -79,6 +79,11 @@ const translations = {
     supportedFormats: 'JPG، PNG، WEBP (حد أقصى 5MB)',
     copyLink: 'نسخ الرابط',
     linkCopied: 'تم النسخ!',
+    mainShipment: 'الشحنة الرئيسية',
+    mainShipmentHint: 'اتركه فارغًا إذا كانت شحنة مستقلة. إذا ربطتها بشحنة رئيسية، سيتم تحديث حالتها تلقائيًا كلما تغيرت حالة الشحنة الرئيسية.',
+    linkedShipments: 'الشحنات المرتبطة',
+    partOfMainShipment: 'جزء من الشحنة الرئيسية',
+    cascadeWarning: 'سيتم تحديث حالة هذه الشحنة وجميع الشحنات المرتبطة بها تلقائيًا',
   },
   en: {
     loading: 'Loading...',
@@ -154,6 +159,11 @@ const translations = {
     supportedFormats: 'JPG, PNG, WEBP (max 5MB)',
     copyLink: 'Copy Link',
     linkCopied: 'Copied!',
+    mainShipment: 'Main Shipment',
+    mainShipmentHint: 'Leave blank if this is a standalone shipment. If linked to a main shipment, its status will update automatically whenever the main shipment\'s status changes.',
+    linkedShipments: 'Linked Shipments',
+    partOfMainShipment: 'Part of main shipment',
+    cascadeWarning: 'This will also update the status of every shipment linked to this one',
   }
 };
 

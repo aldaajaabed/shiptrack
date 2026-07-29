@@ -26,9 +26,11 @@ router.get('/', authMiddleware, async (req, res) => {
   try {
     const { search, status, page = 1, limit = 20 } = req.query;
     let query = `
-      SELECT s.*, 
-        (SELECT COUNT(*) FROM shipment_images si WHERE si.shipment_id = s.id) as image_count
-      FROM shipments s WHERE 1=1
+      SELECT s.*,
+        (SELECT COUNT(*) FROM shipment_images si WHERE si.shipment_id = s.id) as image_count,
+        (SELECT COUNT(*) FROM shipments c WHERE c.parent_shipment_id = s.id) as children_count,
+        p.tracking_number as parent_tracking_number
+      FROM shipments s LEFT JOIN shipments p ON p.id = s.parent_shipment_id WHERE 1=1
     `;
     const params = [];
     if (search) {
@@ -64,7 +66,20 @@ router.get('/:id', authMiddleware, async (req, res) => {
       [shipment.id]
     );
 
-    res.json({ ...shipment, history, images });
+    let parent = null;
+    if (shipment.parent_shipment_id) {
+      const [parentRows] = await db.query(
+        'SELECT id, tracking_number, customer_name FROM shipments WHERE id = ?',
+        [shipment.parent_shipment_id]
+      );
+      parent = parentRows[0] || null;
+    }
+    const [children] = await db.query(
+      'SELECT id, tracking_number, customer_name, current_status FROM shipments WHERE parent_shipment_id = ? ORDER BY created_at ASC',
+      [shipment.id]
+    );
+
+    res.json({ ...shipment, history, images, parent, children });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -74,8 +89,21 @@ router.get('/:id', authMiddleware, async (req, res) => {
 router.post('/', authMiddleware, async (req, res) => {
   try {
     const { customer_name, phone, departure_date, estimated_arrival, notes } = req.body;
-    let { tracking_number } = req.body;
+    let { tracking_number, parent_tracking_number } = req.body;
     if (!customer_name || !phone) return res.status(400).json({ error: 'Customer name and phone required' });
+
+    let parent_shipment_id = null;
+    if (parent_tracking_number) {
+      const [parentRows] = await db.query(
+        'SELECT id, parent_shipment_id FROM shipments WHERE tracking_number = ?',
+        [parent_tracking_number.trim().toUpperCase()]
+      );
+      if (!parentRows.length) return res.status(400).json({ error: 'Main shipment tracking number not found' });
+      if (parentRows[0].parent_shipment_id) {
+        return res.status(400).json({ error: 'That shipment is itself linked to a main shipment; pick the top-level one' });
+      }
+      parent_shipment_id = parentRows[0].id;
+    }
 
     if (tracking_number) {
       tracking_number = tracking_number.trim().toUpperCase();
@@ -105,9 +133,9 @@ router.post('/', authMiddleware, async (req, res) => {
     const qr_code_path = `/uploads/qr/${qrFilename}`;
 
     const [result] = await db.query(
-      `INSERT INTO shipments (tracking_number, customer_name, phone, departure_date, estimated_arrival, notes, qr_code_path, tracking_url)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [tracking_number, customer_name, phone, departure_date || null, estimated_arrival || null, notes || null, qr_code_path, tracking_url]
+      `INSERT INTO shipments (tracking_number, customer_name, phone, departure_date, estimated_arrival, notes, qr_code_path, tracking_url, parent_shipment_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [tracking_number, customer_name, phone, departure_date || null, estimated_arrival || null, notes || null, qr_code_path, tracking_url, parent_shipment_id]
     );
 
     // Insert initial status history
@@ -130,11 +158,32 @@ router.post('/', authMiddleware, async (req, res) => {
 // PUT /api/shipments/:id — update shipment info
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
-    const { customer_name, phone, departure_date, estimated_arrival, notes } = req.body;
+    const { customer_name, phone, departure_date, estimated_arrival, notes, parent_tracking_number } = req.body;
+
+    let parent_shipment_id = null;
+    if (parent_tracking_number) {
+      const [parentRows] = await db.query(
+        'SELECT id, parent_shipment_id FROM shipments WHERE tracking_number = ?',
+        [parent_tracking_number.trim().toUpperCase()]
+      );
+      if (!parentRows.length) return res.status(400).json({ error: 'Main shipment tracking number not found' });
+      if (parentRows[0].id === parseInt(req.params.id)) {
+        return res.status(400).json({ error: 'A shipment cannot be its own main shipment' });
+      }
+      if (parentRows[0].parent_shipment_id) {
+        return res.status(400).json({ error: 'That shipment is itself linked to a main shipment; pick the top-level one' });
+      }
+      const [childCheck] = await db.query('SELECT id FROM shipments WHERE parent_shipment_id = ? LIMIT 1', [req.params.id]);
+      if (childCheck.length) {
+        return res.status(400).json({ error: 'This shipment already has shipments linked to it and cannot also be linked to a main shipment' });
+      }
+      parent_shipment_id = parentRows[0].id;
+    }
+
     await db.query(
-      `UPDATE shipments SET customer_name=?, phone=?, departure_date=?, estimated_arrival=?, notes=?, updated_at=NOW()
+      `UPDATE shipments SET customer_name=?, phone=?, departure_date=?, estimated_arrival=?, notes=?, parent_shipment_id=?, updated_at=NOW()
        WHERE id=?`,
-      [customer_name, phone, departure_date || null, estimated_arrival || null, notes || null, req.params.id]
+      [customer_name, phone, departure_date || null, estimated_arrival || null, notes || null, parent_shipment_id, req.params.id]
     );
     const [rows] = await db.query('SELECT * FROM shipments WHERE id = ?', [req.params.id]);
     await db.query('INSERT INTO activity_logs (user_id, action, description) VALUES (?, ?, ?)',
@@ -147,21 +196,44 @@ router.put('/:id', authMiddleware, async (req, res) => {
 
 // PATCH /api/shipments/:id/status — update status
 router.patch('/:id/status', authMiddleware, async (req, res) => {
+  const conn = await db.getConnection();
   try {
     const { status, note } = req.body;
     if (!STATUS_ORDER.includes(status)) return res.status(400).json({ error: 'Invalid status' });
 
-    await db.query('UPDATE shipments SET current_status = ?, updated_at = NOW() WHERE id = ?', [status, req.params.id]);
-    await db.query(
+    await conn.beginTransaction();
+
+    await conn.query('UPDATE shipments SET current_status = ?, updated_at = NOW() WHERE id = ?', [status, req.params.id]);
+    await conn.query(
       'INSERT INTO shipment_status_history (shipment_id, status, note) VALUES (?, ?, ?)',
       [req.params.id, status, note || null]
     );
-    await db.query('INSERT INTO activity_logs (user_id, action, description) VALUES (?, ?, ?)',
+    await conn.query('INSERT INTO activity_logs (user_id, action, description) VALUES (?, ?, ?)',
       [req.user.id, 'UPDATE_STATUS', `Updated shipment ${req.params.id} to ${status}`]);
 
-    res.json({ message: 'Status updated', status });
+    // Cascade to every shipment linked to this one as their main shipment
+    const [children] = await conn.query(
+      'SELECT id, tracking_number FROM shipments WHERE parent_shipment_id = ?', [req.params.id]
+    );
+    for (const child of children) {
+      await conn.query('UPDATE shipments SET current_status = ?, updated_at = NOW() WHERE id = ?', [status, child.id]);
+      await conn.query(
+        'INSERT INTO shipment_status_history (shipment_id, status, note) VALUES (?, ?, ?)',
+        [child.id, status, note || 'تم التحديث تلقائيًا من الشحنة الرئيسية']
+      );
+    }
+    if (children.length) {
+      await conn.query('INSERT INTO activity_logs (user_id, action, description) VALUES (?, ?, ?)',
+        [req.user.id, 'CASCADE_STATUS', `Cascaded status ${status} to ${children.length} linked shipment(s) from shipment ${req.params.id}`]);
+    }
+
+    await conn.commit();
+    res.json({ message: 'Status updated', status, cascaded: children.length });
   } catch (err) {
+    await conn.rollback();
     res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
   }
 });
 

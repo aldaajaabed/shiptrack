@@ -36,8 +36,10 @@ CREATE TABLE shipments (
   qr_code_path VARCHAR(255),
   tracking_url VARCHAR(255),
   notes TEXT,
+  parent_shipment_id INT DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (parent_shipment_id) REFERENCES shipments(id) ON DELETE SET NULL
 );
 
 -- Shipment Status History
@@ -84,5 +86,6 @@ INSERT INTO users (name, email, password, role) VALUES
 
 -- Indexes
 CREATE INDEX idx_shipments_tracking ON shipments(tracking_number);
+CREATE INDEX idx_shipments_parent ON shipments(parent_shipment_id);
 CREATE INDEX idx_status_history_shipment ON shipment_status_history(shipment_id);
 CREATE INDEX idx_images_shipment ON shipment_images(shipment_id);
