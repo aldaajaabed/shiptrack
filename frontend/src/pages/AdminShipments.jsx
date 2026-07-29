@@ -51,14 +51,14 @@ function ShipmentModal({ shipment, onClose, onSaved }) {
                 <label className="form-label">{t('trackingNumber')}</label>
                 <input className="form-control" value={form.tracking_number || ''}
                   placeholder={lang === 'ar' ? 'اتركه فارغًا لتوليده تلقائيًا' : 'Leave blank to auto-generate'}
-                  onChange={e => setForm(f => ({ ...f, tracking_number: e.target.value.toUpperCase() }))} />
+                  onChange={e => setForm(f => ({ ...f, tracking_number: e.target.value.replace(/^#/, '').toUpperCase() }))} />
               </div>
             )}
             <div className="form-group">
               <label className="form-label">{t('mainShipment')}</label>
               <input className="form-control" value={form.parent_tracking_number || ''}
                 placeholder={lang === 'ar' ? 'رقم تتبع الشحنة الرئيسية (اختياري)' : 'Main shipment tracking number (optional)'}
-                onChange={e => setForm(f => ({ ...f, parent_tracking_number: e.target.value.toUpperCase() }))} />
+                onChange={e => setForm(f => ({ ...f, parent_tracking_number: e.target.value.replace(/^#/, '').toUpperCase() }))} />
               <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>{t('mainShipmentHint')}</div>
             </div>
             <div className="form-group">

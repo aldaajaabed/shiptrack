@@ -13,6 +13,12 @@ const STATUS_ORDER = [
   'customs_clearance', 'ready_for_delivery', 'delivered'
 ];
 
+// Tracking numbers are displayed with a leading "#" throughout the UI,
+// so strip one off if a copy-pasted value includes it.
+function normalizeTrackingNumber(value) {
+  return value.trim().replace(/^#/, '').toUpperCase();
+}
+
 // Generate unique tracking number
 function generateTrackingNumber() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -96,7 +102,7 @@ router.post('/', authMiddleware, async (req, res) => {
     if (parent_tracking_number) {
       const [parentRows] = await db.query(
         'SELECT id, parent_shipment_id FROM shipments WHERE tracking_number = ?',
-        [parent_tracking_number.trim().toUpperCase()]
+        [normalizeTrackingNumber(parent_tracking_number)]
       );
       if (!parentRows.length) return res.status(400).json({ error: 'Main shipment tracking number not found' });
       if (parentRows[0].parent_shipment_id) {
@@ -106,7 +112,7 @@ router.post('/', authMiddleware, async (req, res) => {
     }
 
     if (tracking_number) {
-      tracking_number = tracking_number.trim().toUpperCase();
+      tracking_number = normalizeTrackingNumber(tracking_number);
       if (!/^[A-Z0-9-]{3,30}$/.test(tracking_number)) {
         return res.status(400).json({ error: 'Tracking number must be 3-30 characters: letters, numbers, or dashes only' });
       }
@@ -164,7 +170,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
     if (parent_tracking_number) {
       const [parentRows] = await db.query(
         'SELECT id, parent_shipment_id FROM shipments WHERE tracking_number = ?',
-        [parent_tracking_number.trim().toUpperCase()]
+        [normalizeTrackingNumber(parent_tracking_number)]
       );
       if (!parentRows.length) return res.status(400).json({ error: 'Main shipment tracking number not found' });
       if (parentRows[0].id === parseInt(req.params.id)) {
