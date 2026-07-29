@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useLang } from '../context/LangContext';
@@ -260,16 +261,17 @@ export default function AdminShipments() {
       </div>
 
       {/* Create/Edit modal */}
-      {(modal === 'create' || (modal && modal !== 'create')) && (
+      {(modal === 'create' || (modal && modal !== 'create')) && createPortal(
         <ShipmentModal
           shipment={modal !== 'create' ? modal : null}
           onClose={() => setModal(null)}
           onSaved={load}
-        />
+        />,
+        document.body
       )}
 
       {/* Delete confirm */}
-      {deleteId && (
+      {deleteId && createPortal(
         <div className="modal-overlay">
           <div className="modal" style={{ maxWidth: '380px' }}>
             <div className="modal-header"><h3>{t('deleteShipment')}</h3></div>
@@ -279,7 +281,8 @@ export default function AdminShipments() {
               <button className="btn btn-danger" onClick={handleDelete}>{t('delete')}</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
