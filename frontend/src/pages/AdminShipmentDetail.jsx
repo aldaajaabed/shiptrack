@@ -16,6 +16,9 @@ export default function AdminShipmentDetail() {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [files, setFiles] = useState([]);
+  const [editingInfo, setEditingInfo] = useState(false);
+  const [infoForm, setInfoForm] = useState(null);
+  const [savingInfo, setSavingInfo] = useState(false);
 
   const STATUS_LABELS = {
     departed_ningbo: lang === 'ar' ? 'غادر ميناء نينغبو' : 'Departed Ningbo Port',
@@ -40,6 +43,32 @@ export default function AdminShipmentDetail() {
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
+
+  const startEditInfo = () => {
+    setInfoForm({
+      customer_name: shipment.customer_name,
+      phone: shipment.phone,
+      departure_date: shipment.departure_date?.slice(0, 10) || '',
+      estimated_arrival: shipment.estimated_arrival?.slice(0, 10) || '',
+      notes: shipment.notes || '',
+    });
+    setEditingInfo(true);
+  };
+
+  const handleInfoSave = async (e) => {
+    e.preventDefault();
+    setSavingInfo(true);
+    try {
+      await api.put(`/shipments/${id}`, infoForm);
+      toast.success(t('save') + ' ✓');
+      setEditingInfo(false);
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.error || t('error'));
+    } finally {
+      setSavingInfo(false);
+    }
+  };
 
   const handleStatusUpdate = async (e) => {
     e.preventDefault();
@@ -132,21 +161,71 @@ export default function AdminShipmentDetail() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
         {/* Shipment info */}
         <div className="card">
-          <div className="card-header"><h2 style={{ fontSize: '1rem' }}>📋 {t('shipmentInfo')}</h2></div>
+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 style={{ fontSize: '1rem' }}>📋 {t('shipmentInfo')}</h2>
+            {!editingInfo && (
+              <button className="btn btn-secondary btn-sm" onClick={startEditInfo}>✏️ {t('edit')}</button>
+            )}
+          </div>
           <div className="card-body">
-            {[
-              { label: t('customerName'), value: shipment.customer_name },
-              { label: t('phone'), value: shipment.phone },
-              { label: t('departureDate'), value: formatDate(shipment.departure_date) },
-              { label: t('estimatedArrival'), value: formatDate(shipment.estimated_arrival) },
-              { label: t('lastUpdate'), value: formatDatetime(shipment.updated_at) },
-            ].map(item => (
-              <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{item.label}</span>
-                <span style={{ fontWeight: '600', fontSize: '0.9rem' }}>{item.value}</span>
-              </div>
-            ))}
-            {shipment.qr_code_path && (
+            {editingInfo ? (
+              <form onSubmit={handleInfoSave}>
+                {shipment.children?.length > 0 && (
+                  <div style={{ background: 'var(--warning-bg, #fef3c7)', color: 'var(--warning-text, #92400e)', borderRadius: 8, padding: '10px 12px', fontSize: '0.82rem', marginBottom: '14px' }}>
+                    ⚠️ {lang === 'ar'
+                      ? `تعديل تاريخ المغادرة والوصول هون رح يتحدث تلقائيًا لكل الشحنات المرتبطة (${shipment.children.length})`
+                      : `Changing the departure/arrival dates here will also update every linked shipment (${shipment.children.length})`}
+                  </div>
+                )}
+                <div className="form-group">
+                  <label className="form-label">{t('customerName')} *</label>
+                  <input className="form-control" value={infoForm.customer_name}
+                    onChange={e => setInfoForm(f => ({ ...f, customer_name: e.target.value }))} required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">{t('phone')} *</label>
+                  <input className="form-control" value={infoForm.phone}
+                    onChange={e => setInfoForm(f => ({ ...f, phone: e.target.value }))} required />
+                </div>
+                <div className="grid-2">
+                  <div className="form-group">
+                    <label className="form-label">{t('departureDate')}</label>
+                    <input type="date" className="form-control" value={infoForm.departure_date}
+                      onChange={e => setInfoForm(f => ({ ...f, departure_date: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">{t('estimatedArrival')}</label>
+                    <input type="date" className="form-control" value={infoForm.estimated_arrival}
+                      onChange={e => setInfoForm(f => ({ ...f, estimated_arrival: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">{t('notes')}</label>
+                  <textarea className="form-control" value={infoForm.notes}
+                    onChange={e => setInfoForm(f => ({ ...f, notes: e.target.value }))} />
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button type="button" className="btn btn-ghost" onClick={() => setEditingInfo(false)}>{t('cancel')}</button>
+                  <button type="submit" className="btn btn-primary" disabled={savingInfo}>{savingInfo ? '...' : t('save')}</button>
+                </div>
+              </form>
+            ) : (
+              <>
+                {[
+                  { label: t('customerName'), value: shipment.customer_name },
+                  { label: t('phone'), value: shipment.phone },
+                  { label: t('departureDate'), value: formatDate(shipment.departure_date) },
+                  { label: t('estimatedArrival'), value: formatDate(shipment.estimated_arrival) },
+                  { label: t('lastUpdate'), value: formatDatetime(shipment.updated_at) },
+                ].map(item => (
+                  <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{item.label}</span>
+                    <span style={{ fontWeight: '600', fontSize: '0.9rem' }}>{item.value}</span>
+                  </div>
+                ))}
+              </>
+            )}
+            {!editingInfo && shipment.qr_code_path && (
               <div style={{ marginTop: '16px', textAlign: 'center' }}>
                 <img src={resolveUploadUrl(shipment.qr_code_path)} alt="QR Code" style={{ width: 120, height: 120, borderRadius: 8 }} />
                 <div style={{ marginTop: '8px' }}>

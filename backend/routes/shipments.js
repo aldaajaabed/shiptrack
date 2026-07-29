@@ -186,15 +186,38 @@ router.put('/:id', authMiddleware, async (req, res) => {
       parent_shipment_id = parentRows[0].id;
     }
 
-    await db.query(
-      `UPDATE shipments SET customer_name=?, phone=?, departure_date=?, estimated_arrival=?, notes=?, parent_shipment_id=?, updated_at=NOW()
-       WHERE id=?`,
-      [customer_name, phone, departure_date || null, estimated_arrival || null, notes || null, parent_shipment_id, req.params.id]
-    );
-    const [rows] = await db.query('SELECT * FROM shipments WHERE id = ?', [req.params.id]);
-    await db.query('INSERT INTO activity_logs (user_id, action, description) VALUES (?, ?, ?)',
-      [req.user.id, 'UPDATE_SHIPMENT', `Updated shipment ID ${req.params.id}`]);
-    res.json(rows[0]);
+    const conn = await db.getConnection();
+    try {
+      await conn.beginTransaction();
+
+      await conn.query(
+        `UPDATE shipments SET customer_name=?, phone=?, departure_date=?, estimated_arrival=?, notes=?, parent_shipment_id=?, updated_at=NOW()
+         WHERE id=?`,
+        [customer_name, phone, departure_date || null, estimated_arrival || null, notes || null, parent_shipment_id, req.params.id]
+      );
+      await conn.query('INSERT INTO activity_logs (user_id, action, description) VALUES (?, ?, ?)',
+        [req.user.id, 'UPDATE_SHIPMENT', `Updated shipment ID ${req.params.id}`]);
+
+      // Cascade departure/arrival dates to every shipment linked to this one as their main shipment
+      const [children] = await conn.query('SELECT id FROM shipments WHERE parent_shipment_id = ?', [req.params.id]);
+      if (children.length) {
+        await conn.query(
+          'UPDATE shipments SET departure_date=?, estimated_arrival=?, updated_at=NOW() WHERE parent_shipment_id=?',
+          [departure_date || null, estimated_arrival || null, req.params.id]
+        );
+        await conn.query('INSERT INTO activity_logs (user_id, action, description) VALUES (?, ?, ?)',
+          [req.user.id, 'CASCADE_DATES', `Cascaded departure/arrival dates to ${children.length} linked shipment(s) from shipment ${req.params.id}`]);
+      }
+
+      await conn.commit();
+      const [rows] = await db.query('SELECT * FROM shipments WHERE id = ?', [req.params.id]);
+      res.json(rows[0]);
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
